@@ -59,3 +59,31 @@ add_filter( 'the_content', 'mop_prepend_filter_the_content' );
 add_filter( 'the_content', 'mop_append_filter_the_content' );
 add_filter( 'the_content', 'mop_replace_filter_the_content' );
 add_filter( 'the_content', 'mop_paragraph_filter_the_content', 9 );
+
+/**
+ * Navigation menu filter
+ *
+ * @param array  $items An array of menu items.
+ * @param object $menu  The menu object.
+ */
+function mop_wp_get_nav_menu_items( $items, $menu ) {
+
+	if ( ! is_admin() && is_user_logged_in() ) {
+		$items[] = (object) array(
+			'ID'               => PHP_INT_MAX,
+			'title'            => 'Profile',
+			'url'              => get_edit_profile_url(),
+			'menu_item_parent' => 0,
+			'menu_order'       => null,
+			'type'             => null,
+			'object'           => null,
+			'object_id'        => null,
+			'db_id'            => null,
+			'classes'          => null,
+		);
+	}
+	return $items;
+}
+
+// Set filters to wp_get_nav_menu_items.
+add_filter( 'wp_get_nav_menu_items', 'mop_wp_get_nav_menu_items', 10, 2 );
