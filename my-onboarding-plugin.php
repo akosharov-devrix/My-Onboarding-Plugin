@@ -14,6 +14,8 @@
  * @package my-onboarding-plugin
  */
 
+$mop_filters_enabled = get_option( 'mop-filters-enabled', '0' );
+
 /**
  * Content prepend filter function
  *
@@ -54,11 +56,13 @@ function mop_paragraph_filter_the_content( $content ) {
 	return $content;
 }
 
-// Set filters to the_conent.
-add_filter( 'the_content', 'mop_prepend_filter_the_content' );
-add_filter( 'the_content', 'mop_append_filter_the_content' );
-add_filter( 'the_content', 'mop_replace_filter_the_content' );
-add_filter( 'the_content', 'mop_paragraph_filter_the_content', 9 );
+// Set filters to the_conent if enabled.
+if ( '1' === $mop_filters_enabled ) {
+	add_filter( 'the_content', 'mop_prepend_filter_the_content' );
+	add_filter( 'the_content', 'mop_append_filter_the_content' );
+	add_filter( 'the_content', 'mop_replace_filter_the_content' );
+	add_filter( 'the_content', 'mop_paragraph_filter_the_content', 9 );
+}
 
 /**
  * Navigation menu filter
@@ -109,3 +113,83 @@ function mop_admin_email_user_profile_update( $user_id ) {
 // Set action function for personal_options_update and edit_user_profile_update.
 add_action( 'personal_options_update', 'mop_admin_email_user_profile_update' );
 add_action( 'edit_user_profile_update', 'mop_admin_email_user_profile_update' );
+
+/**
+ * Set admin option page
+ */
+function mop_admin_menu() {
+	add_options_page( 'My Onboarding', 'My Onboarding Plugin', 'manage_options', 'my-onboarding-admin-menu', 'mop_plugin_options' );
+}
+
+// Set adction function for admin_menu.
+add_action( 'admin_menu', 'mop_admin_menu' );
+
+/**
+ * Admin option page output
+ */
+function mop_plugin_options() {
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_die( 'You do not have sufficient permissions to access this page.' );
+	}
+	$mop_filters_enabled = get_option( 'mop-filters-enabled', '0' );
+	?>
+	<div class="wrap">
+		<h2>My Onboarding Plugin Options</h2>
+		<table class="form-table">
+			<tr>
+				<th scope="row">Plugin Filters</th>
+				<td>
+					<div>
+						<input type="checkbox" id="mop-filters-enabled" name="mop-filters-enabled" value="1" data-nonce="<?php echo esc_attr( wp_create_nonce( 'mop-filters-enabled' ) ); ?>" <?php checked( '1', $mop_filters_enabled ); ?> />
+						<label for="toolbar-filters-enabled">Filters Enabled</label>
+					</div>
+				</td>
+			</tr>
+	</div>
+<script type="text/javascript" >
+jQuery( document ).ready( function($) {
+	jQuery('#mop-filters-enabled').change(function () {
+		var data = {
+			'action': 'mop_plugin_options_action',
+			'nonce': jQuery( this ).data( 'nonce' ),
+			'mop-filters-enabled': jQuery( this ).prop( 'checked' ) ? '1' : '0',
+		};
+		jQuery.post( ajaxurl, data, function( response ) {
+			alert( response );
+		} );
+	});
+
+});
+</script>
+	<?php
+}
+
+/**
+ * Ajax action function for Filters Enabled checkbox
+ */
+function mop_plugin_options_action() {
+	ob_clean();
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_die( 'You do not have sufficient permissions to access this page.' );
+	}
+	$nonce_check = check_ajax_referer( 'mop-filters-enabled', 'nonce', false );
+	if ( ! $nonce_check ) {
+		wp_die( 'Invalid nonce.' );
+	}
+	$mop_filters_enabled = '0';
+	if ( isset( $_POST['mop-filters-enabled'] ) ) {
+		$mop_filters_enabled = sanitize_text_field( wp_unslash( $_POST['mop-filters-enabled'] ) );
+	}
+	if ( '1' === $mop_filters_enabled ) {
+		echo 'Filters Enabled.';
+	} else {
+		$mop_filters_enabled = '0';
+		echo 'Filters Disabled.';
+	}
+	update_option( 'mop-filters-enabled', $mop_filters_enabled );
+	wp_die();
+}
+
+// Set ajax action function.
+add_action( 'wp_ajax_mop_plugin_options_action', 'mop_plugin_options_action' );
+
