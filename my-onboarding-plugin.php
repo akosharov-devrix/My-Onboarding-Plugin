@@ -67,8 +67,7 @@ add_filter( 'the_content', 'mop_paragraph_filter_the_content', 9 );
  * @param object $menu  The menu object.
  */
 function mop_wp_get_nav_menu_items( $items, $menu ) {
-
-	if ( ! is_admin() && is_user_logged_in() ) {
+	if ( ! is_admin() && is_user_logged_in() && 'test' === $menu->slug ) {
 		$items[] = (object) array(
 			'ID'               => PHP_INT_MAX,
 			'title'            => 'Profile',
@@ -80,6 +79,8 @@ function mop_wp_get_nav_menu_items( $items, $menu ) {
 			'object_id'        => null,
 			'db_id'            => null,
 			'classes'          => null,
+			'target'           => null,
+			'xfn'              => null,
 		);
 	}
 	return $items;
@@ -87,3 +88,24 @@ function mop_wp_get_nav_menu_items( $items, $menu ) {
 
 // Set filters to wp_get_nav_menu_items.
 add_filter( 'wp_get_nav_menu_items', 'mop_wp_get_nav_menu_items', 10, 2 );
+
+/**
+ * Send email to admin when user profile is updated
+ *
+ * @param int $user_id The user ID.
+ */
+function mop_admin_email_user_profile_update( $user_id ) {
+	$profile_user = get_userdata( $user_id );
+	$to           = '';
+	$users        = get_users( array( 'role' => 'Administrator' ) );
+	foreach ( $users as $user ) {
+		$to .= ( empty( $to ) ? '' : ', ' ) . $user->user_email;
+	}
+	$subject = 'User updated profile';
+	$message = 'User ' . $profile_user->display_name . ' has updated their profile. User ID: ' . $profile_user->ID;
+	wp_mail( $to, $subject, $message );
+}
+
+// Set action function for personal_options_update and edit_user_profile_update.
+add_action( 'personal_options_update', 'mop_admin_email_user_profile_update' );
+add_action( 'edit_user_profile_update', 'mop_admin_email_user_profile_update' );
