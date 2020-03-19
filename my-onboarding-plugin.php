@@ -119,6 +119,7 @@ add_action( 'edit_user_profile_update', 'mop_admin_email_user_profile_update' );
  */
 function mop_admin_menu() {
 	add_options_page( 'My Onboarding', 'My Onboarding Plugin', 'manage_options', 'my-onboarding-admin-menu', 'mop_plugin_options' );
+	add_menu_page( 'My Onboarding', 'My Onboarding', 'manage_options', 'my-onboarding-admin-main-menu', 'mop_plugin_options' );
 }
 
 // Set adction function for admin_menu.
