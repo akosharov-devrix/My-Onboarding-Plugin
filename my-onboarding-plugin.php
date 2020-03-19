@@ -194,3 +194,61 @@ function mop_plugin_options_action() {
 // Set ajax action function.
 add_action( 'wp_ajax_mop_plugin_options_action', 'mop_plugin_options_action' );
 
+/**
+ * Init custom post type
+ */
+function mop_cpt_init() {
+	$labels = array(
+		'name'           => 'Students',
+		'singular_name'  => 'Student',
+		'menu_name'      => 'Students',
+		'name_admin_bar' => 'Student',
+		'add_new_item'   => 'Add New Student',
+	);
+
+	$supports = array(
+		'thumbnail',
+		'excerpt',
+		'title',
+		'editor',
+	);
+
+	$args = array(
+		'label'               => 'Student',
+		'description'         => 'Student Description',
+		'labels'              => $labels,
+		'supports'            => $supports,
+		'taxonomies'          => array( 'category' ),
+		'hierarchical'        => false,
+		'public'              => true,
+		'show_ui'             => true,
+		'show_in_menu'        => true,
+		'menu_position'       => 5,
+		'show_in_admin_bar'   => true,
+		'show_in_nav_menus'   => true,
+		'can_export'          => true,
+		'has_archive'         => true,
+		'exclude_from_search' => false,
+		'publicly_queryable'  => true,
+		'capability_type'     => 'page',
+	);
+
+	register_post_type(
+		'student',
+		$args,
+	);
+}
+
+// Set init function.
+add_action( 'init', 'mop_cpt_init' );
+
+/**
+ * Flush rewrite rules on plugin activation for the custom post type.
+ */
+function mop_rewrite_flush() {
+	mop_cpt_init();
+	flush_rewrite_rules();
+}
+
+// Set activation function.
+register_activation_hook( __FILE__, 'mop_rewrite_flush' );
