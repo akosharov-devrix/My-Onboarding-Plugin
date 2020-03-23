@@ -322,6 +322,7 @@ function mop_student_archive_filter_the_content( $content ) {
 		'post_type'      => 'student',
 		'cat'            => 3,
 		'posts_per_page' => 4,
+		'paged'          => get_query_var( 'paged' ),
 	);
 
 	$query = new WP_Query( $args );
@@ -599,3 +600,204 @@ function mop_student_active_action() {
 // Set ajax action function.
 add_action( 'wp_ajax_mop_student_active_action', 'mop_student_active_action' );
 
+/**
+ * Shortcode function for student query
+ *
+ * @param array $atts columns array.
+ */
+function mop_student_query( $atts ) {
+	$a = shortcode_atts(
+		array(
+			'id' => 0,
+		),
+		$atts
+	);
+	ob_start();
+	?>
+	<?php
+	$args = array(
+		'post_type' => 'student',
+		'p'         => $a['id'],
+	);
+
+	$query = new WP_Query( $args );
+	if ( $query->have_posts() ) {
+		while ( $query->have_posts() ) {
+			$query->the_post();
+			$grade = get_post_meta( $query->post->ID, 'mop_student_grade', true );
+			?>
+			<div class="student-entry">
+			<?php if ( has_post_thumbnail() ) : ?>
+				<div class="student-featured-image"><?php the_post_thumbnail(); ?></div>
+			<?php endif; ?>
+				<h1><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h1>
+			<?php if ( ! empty( $grade ) ) : ?>
+				<p>Class / Grade: <?php echo esc_html( $grade ); ?></p>
+			<?php endif; ?>
+			</div>
+			<?php
+		}
+	} else {
+		?>
+		<p>Student not found.</p>
+		<?php
+	}
+	wp_reset_postdata();
+	?>
+	<?php
+	$content = ob_get_clean();
+	return $content;
+}
+
+// Set shortcode function.
+add_shortcode( 'student', 'mop_student_query' );
+
+/**
+ * Students List Widget
+ */
+class Mop_Student_Widget extends WP_Widget {
+	/**
+	 * Register widget with WordPress.
+	 */
+	public function __construct() {
+		parent::__construct(
+			'mop_student_widget', // Base ID.
+			'Student Widget', // Name.
+			array(
+				'description' => 'A Student Widget',
+			) // Args.
+		);
+	}
+
+	/**
+	 * Front-end display of widget.
+	 *
+	 * @see WP_Widget::widget()
+	 *
+	 * @param array $args     Widget arguments.
+	 * @param array $instance Saved values from database.
+	 */
+	public function widget( $args, $instance ) {
+		echo wp_kses_post( $args['before_widget'] );
+		echo wp_kses_post( $args['before_title'] );
+		echo esc_html( $instance['title'] );
+		echo wp_kses_post( $args['after_title'] );
+
+		$query_args = array(
+			'post_type'      => 'student',
+			'posts_per_page' => $instance['post_per_page'],
+			'meta_key'       => 'mop_student_active',
+			'meta_value'     => $instance['student_status'],
+			'paged'          => get_query_var( 'paged' ),
+		);
+
+		$query = new WP_Query( $query_args );
+		if ( $query->have_posts() ) {
+			$paginate_links = paginate_links(
+				array(
+					'base'    => str_replace( PHP_INT_MAX, '%#%', esc_url( get_pagenum_link( PHP_INT_MAX ) ) ),
+					'format'  => '?paged=%#%',
+					'current' => max( 1, get_query_var( 'paged' ) ),
+					'total'   => $query->max_num_pages,
+				)
+			);
+			while ( $query->have_posts() ) {
+				$query->the_post();
+				?>
+				<div class="student-entry">
+					<?php if ( has_post_thumbnail() ) : ?>
+						<div class="student-featured-image"><?php the_post_thumbnail(); ?></div>
+					<?php endif; ?>
+					<h1><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h1>
+					<p><?php the_excerpt(); ?></p>
+				</div>
+				<?php
+			}
+			if ( ! empty( $paginate_links ) ) {
+				?>
+				<p class="student-archive-pagination">Pages: <?php echo wp_kses_post( $paginate_links ); ?></p>
+				<?php
+			}
+		} else {
+			?>
+			<p>No students found.</p>
+			<?php
+		}
+		wp_reset_postdata();
+		echo wp_kses_post( $args['after_widget'] );
+	}
+
+	/**
+	 * Back-end widget form.
+	 *
+	 * @see WP_Widget::form()
+	 *
+	 * @param array $instance Previously saved values from database.
+	 */
+	public function form( $instance ) {
+		if ( isset( $instance['title'] ) ) {
+			$title = $instance['title'];
+		} else {
+			$title = 'Students';
+		}
+		if ( isset( $instance['post_per_page'] ) ) {
+			$post_per_page = $instance['post_per_page'];
+		} else {
+			$post_per_page = '5';
+		}
+		if ( isset( $instance['student_status'] ) ) {
+			$student_status = $instance['student_status'];
+		} else {
+			$student_status = '1';
+		}
+		?>
+		<p>
+			<label for="<?php echo esc_attr( $this->get_field_name( 'title' ) ); ?>">Title</label>
+			<input class="widefat" id="<?php echo esc_attr( $this->get_field_id( 'title' ) ); ?>" name="<?php echo esc_attr( $this->get_field_name( 'title' ) ); ?>" type="text" value="<?php echo esc_attr( $title ); ?>" />
+		</p>
+		<p>
+			<label for="<?php echo esc_attr( $this->get_field_name( 'post_per_page' ) ); ?>">Post per page</label>
+			<input class="widefat" id="<?php echo esc_attr( $this->get_field_id( 'post_per_page' ) ); ?>" name="<?php echo esc_attr( $this->get_field_name( 'post_per_page' ) ); ?>" type="text" value="<?php echo esc_attr( $post_per_page ); ?>" />
+		</p>
+		<p>
+			<label for="<?php echo esc_attr( $this->get_field_name( 'student_status' ) ); ?>">Student status</label>
+			<select class="widefat" id="<?php echo esc_attr( $this->get_field_id( 'student_status' ) ); ?>" name="<?php echo esc_attr( $this->get_field_name( 'student_status' ) ); ?>">
+				<option value="0" <?php selected( $student_status, '0' ); ?>>Inactive</option>
+				<option value="1" <?php selected( $student_status, '1' ); ?>>Active</option>
+			</select>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Sanitize widget form values as they are saved.
+	 *
+	 * @see WP_Widget::update()
+	 *
+	 * @param array $new_instance Values just sent to be saved.
+	 * @param array $old_instance Previously saved values from database.
+	 *
+	 * @return array Updated safe values to be saved.
+	 */
+	public function update( $new_instance, $old_instance ) {
+		$instance = array();
+
+		$instance['title'] = ( ! empty( $new_instance['title'] ) ) ? wp_strip_all_tags( $new_instance['title'] ) : 'Students';
+
+		$instance['post_per_page'] = ( ! empty( $new_instance['post_per_page'] ) ) ? wp_strip_all_tags( $new_instance['post_per_page'] ) : '5';
+
+		$instance['student_status'] = ( isset( $new_instance['student_status'] ) ) ? wp_strip_all_tags( $new_instance['student_status'] ) : '1';
+
+		return $instance;
+	}
+}
+
+// Register Mop_Student_Widget widget.
+add_action( 'widgets_init', 'mop_register_student_widget' );
+
+/**
+ * Register Mop_Student_Widget widget
+ */
+function mop_register_student_widget() {
+	register_widget( 'Mop_Student_Widget' );
+}
