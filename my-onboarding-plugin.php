@@ -336,7 +336,9 @@ function mop_student_archive_filter_the_content( $content ) {
 				$query->the_post();
 				?>
 				<div class="student-entry">
-					<?php the_post_thumbnail(); ?>
+					<?php if ( has_post_thumbnail() ) : ?>
+						<div class="student-featured-image"><?php the_post_thumbnail(); ?></div>
+					<?php endif; ?>
 					<h1><?php the_title(); ?></h1>
 					<p><?php the_excerpt(); ?></p>
 				</div>
