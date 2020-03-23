@@ -301,3 +301,65 @@ function mop_rewrite_flush() {
 
 // Set activation function.
 register_activation_hook( __FILE__, 'mop_rewrite_flush' );
+
+/**
+ * Content filter function for Student Archive Page
+ *
+ * @param string $content content value.
+ */
+function mop_student_archive_filter_the_content( $content ) {
+	global $post;
+	$mop_students_page = get_option( 'mop-students-page', 0 );
+	if ( intval( $mop_students_page ) === $post->ID ) {
+		remove_filter( 'the_content', 'mop_student_archive_filter_the_content' );
+		ob_start();
+		?>
+		<?php the_content(); ?>
+		<?php
+		$args = array(
+			'post_type'      => 'student',
+			'cat'            => 3,
+			'posts_per_page' => 4,
+		);
+
+		$query = new WP_Query( $args );
+		if ( $query->have_posts() ) {
+			$paginate_links = paginate_links(
+				array(
+					'base'    => str_replace( PHP_INT_MAX, '%#%', esc_url( get_pagenum_link( PHP_INT_MAX ) ) ),
+					'format'  => '?paged=%#%',
+					'current' => max( 1, get_query_var( 'paged' ) ),
+					'total'   => $query->max_num_pages,
+				)
+			);
+			while ( $query->have_posts() ) {
+				$query->the_post();
+				?>
+				<div class="student-entry">
+					<?php the_post_thumbnail(); ?>
+					<h1><?php the_title(); ?></h1>
+					<p><?php the_excerpt(); ?></p>
+				</div>
+				<?php
+			}
+			if ( ! empty( $paginate_links ) ) {
+				?>
+				<p class="student-archive-pagination">Pages: <?php echo wp_kses_post( $paginate_links ); ?></p>
+				<?php
+			}
+		} else {
+			?>
+			<p>No students found.</p>
+			<?php
+		}
+		wp_reset_postdata();
+		?>
+		<?php
+		$content = ob_get_clean();
+	}
+	return $content;
+}
+// Set filter function.
+add_filter( 'the_content', 'mop_student_archive_filter_the_content' );
+
+
