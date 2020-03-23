@@ -22,7 +22,10 @@ $mop_filters_enabled = get_option( 'mop-filters-enabled', '0' );
  * @param string $content content value.
  */
 function mop_prepend_filter_the_content( $content ) {
-	$content = 'Onboarding Filter: ' . $content;
+	global $post;
+	if ( 'student' === $post->post_type ) {
+		$content = 'Onboarding Filter: ' . $content;
+	}
 	return $content;
 }
 
@@ -32,7 +35,10 @@ function mop_prepend_filter_the_content( $content ) {
  * @param string $content content value.
  */
 function mop_append_filter_the_content( $content ) {
-	$content .= 'By Atanas Kosharov';
+	global $post;
+	if ( 'student' === $post->post_type ) {
+		$content .= 'By Atanas Kosharov';
+	}
 	return $content;
 }
 
@@ -42,7 +48,10 @@ function mop_append_filter_the_content( $content ) {
  * @param string $content content value.
  */
 function mop_replace_filter_the_content( $content ) {
-	$content = preg_replace( '/(<\/p>)/i', '${1}<div style="display: none;"></div>', $content, 1 );
+	global $post;
+	if ( 'student' === $post->post_type ) {
+		$content = preg_replace( '/(<\/p>)/i', '${1}<div style="display: none;"></div>', $content, 1 );
+	}
 	return $content;
 }
 
@@ -52,7 +61,10 @@ function mop_replace_filter_the_content( $content ) {
  * @param string $content content value.
  */
 function mop_paragraph_filter_the_content( $content ) {
-	$content = '<p>Some paragraph</p>' . $content;
+	global $post;
+	if ( 'student' === $post->post_type ) {
+		$content = '<p>Some paragraph</p>' . $content;
+	}
 	return $content;
 }
 
@@ -133,6 +145,7 @@ function mop_plugin_options() {
 		wp_die( 'You do not have sufficient permissions to access this page.' );
 	}
 	$mop_filters_enabled = get_option( 'mop-filters-enabled', '0' );
+	$mop_students_page   = get_option( 'mop-students-page', 0 );
 	?>
 	<div class="wrap">
 		<h2>My Onboarding Plugin Options</h2>
@@ -142,7 +155,25 @@ function mop_plugin_options() {
 				<td>
 					<div>
 						<input type="checkbox" id="mop-filters-enabled" name="mop-filters-enabled" value="1" data-nonce="<?php echo esc_attr( wp_create_nonce( 'mop-filters-enabled' ) ); ?>" <?php checked( '1', $mop_filters_enabled ); ?> />
-						<label for="toolbar-filters-enabled">Filters Enabled</label>
+						<label for="mop-filters-enabled">Filters Enabled</label>
+					</div>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row">Students Page</th>
+				<td>
+					<div>
+						<label for="mop-students-page">Select page</label>
+						<select id="mop-students-page" name="mop-students-page" data-nonce="<?php echo esc_attr( wp_create_nonce( 'mop-students-page' ) ); ?>">
+	<?php
+	$pages = get_pages();
+	foreach ( $pages as $page ) {
+		?>
+							<option value="<?php echo esc_attr( $page->ID ); ?>" <?php selected( $mop_students_page, $page->ID ); ?>><?php echo esc_attr( $page->post_title ); ?></option>
+		<?php
+	}
+	?>
+						</select>
 					</div>
 				</td>
 			</tr>
@@ -160,6 +191,16 @@ jQuery( document ).ready( function($) {
 		} );
 	});
 
+	jQuery('#mop-students-page').change(function () {
+		var data = {
+			'action': 'mop_plugin_options_action',
+			'nonce': jQuery( this ).data( 'nonce' ),
+			'mop-students-page': jQuery( this ).val(),
+		};
+		jQuery.post( ajaxurl, data, function( response ) {
+			alert( response );
+		} );
+	});
 });
 </script>
 	<?php
@@ -173,24 +214,152 @@ function mop_plugin_options_action() {
 	if ( ! current_user_can( 'manage_options' ) ) {
 		wp_die( 'You do not have sufficient permissions to access this page.' );
 	}
-	$nonce_check = check_ajax_referer( 'mop-filters-enabled', 'nonce', false );
-	if ( ! $nonce_check ) {
-		wp_die( 'Invalid nonce.' );
-	}
-	$mop_filters_enabled = '0';
 	if ( isset( $_POST['mop-filters-enabled'] ) ) {
+		$nonce_check = check_ajax_referer( 'mop-filters-enabled', 'nonce', false );
+		if ( ! $nonce_check ) {
+			wp_die( 'Invalid nonce.' );
+		}
 		$mop_filters_enabled = sanitize_text_field( wp_unslash( $_POST['mop-filters-enabled'] ) );
+		if ( '1' === $mop_filters_enabled ) {
+			echo 'Filters Enabled.';
+		} else {
+			$mop_filters_enabled = '0';
+			echo 'Filters Disabled.';
+		}
+		update_option( 'mop-filters-enabled', $mop_filters_enabled );
 	}
-	if ( '1' === $mop_filters_enabled ) {
-		echo 'Filters Enabled.';
-	} else {
-		$mop_filters_enabled = '0';
-		echo 'Filters Disabled.';
+	if ( isset( $_POST['mop-students-page'] ) ) {
+		$nonce_check = check_ajax_referer( 'mop-students-page', 'nonce', false );
+		if ( ! $nonce_check ) {
+			wp_die( 'Invalid nonce.' );
+		}
+		$mop_students_page = sanitize_text_field( wp_unslash( $_POST['mop-students-page'] ) );
+		update_option( 'mop-students-page', $mop_students_page );
+		echo 'Students page selected.';
 	}
-	update_option( 'mop-filters-enabled', $mop_filters_enabled );
 	wp_die();
 }
 
 // Set ajax action function.
 add_action( 'wp_ajax_mop_plugin_options_action', 'mop_plugin_options_action' );
+
+/**
+ * Init custom post type
+ */
+function mop_cpt_init() {
+	$labels = array(
+		'name'           => 'Students',
+		'singular_name'  => 'Student',
+		'menu_name'      => 'Students',
+		'name_admin_bar' => 'Student',
+		'add_new_item'   => 'Add New Student',
+	);
+
+	$supports = array(
+		'thumbnail',
+		'excerpt',
+		'title',
+		'editor',
+	);
+
+	$args = array(
+		'label'               => 'Student',
+		'description'         => 'Student Description',
+		'labels'              => $labels,
+		'supports'            => $supports,
+		'taxonomies'          => array( 'category' ),
+		'hierarchical'        => false,
+		'public'              => true,
+		'show_ui'             => true,
+		'show_in_menu'        => true,
+		'menu_position'       => 5,
+		'show_in_admin_bar'   => true,
+		'show_in_nav_menus'   => true,
+		'can_export'          => true,
+		'has_archive'         => true,
+		'exclude_from_search' => false,
+		'publicly_queryable'  => true,
+		'capability_type'     => 'page',
+	);
+
+	register_post_type(
+		'student',
+		$args,
+	);
+}
+
+// Set init function.
+add_action( 'init', 'mop_cpt_init' );
+
+/**
+ * Flush rewrite rules on plugin activation for the custom post type.
+ */
+function mop_rewrite_flush() {
+	mop_cpt_init();
+	flush_rewrite_rules();
+}
+
+// Set activation function.
+register_activation_hook( __FILE__, 'mop_rewrite_flush' );
+
+/**
+ * Content filter function for Student Archive Page
+ *
+ * @param string $content content value.
+ */
+function mop_student_archive_filter_the_content( $content ) {
+	global $post;
+	$mop_students_page = get_option( 'mop-students-page', 0 );
+	if ( intval( $mop_students_page ) === $post->ID ) {
+		remove_filter( 'the_content', 'mop_student_archive_filter_the_content' );
+		ob_start();
+		?>
+		<?php the_content(); ?>
+		<?php
+		$args = array(
+			'post_type'      => 'student',
+			'cat'            => 3,
+			'posts_per_page' => 4,
+		);
+
+		$query = new WP_Query( $args );
+		if ( $query->have_posts() ) {
+			$paginate_links = paginate_links(
+				array(
+					'base'    => str_replace( PHP_INT_MAX, '%#%', esc_url( get_pagenum_link( PHP_INT_MAX ) ) ),
+					'format'  => '?paged=%#%',
+					'current' => max( 1, get_query_var( 'paged' ) ),
+					'total'   => $query->max_num_pages,
+				)
+			);
+			while ( $query->have_posts() ) {
+				$query->the_post();
+				?>
+				<div class="student-entry">
+					<?php the_post_thumbnail(); ?>
+					<h1><?php the_title(); ?></h1>
+					<p><?php the_excerpt(); ?></p>
+				</div>
+				<?php
+			}
+			if ( ! empty( $paginate_links ) ) {
+				?>
+				<p class="student-archive-pagination">Pages: <?php echo wp_kses_post( $paginate_links ); ?></p>
+				<?php
+			}
+		} else {
+			?>
+			<p>No students found.</p>
+			<?php
+		}
+		wp_reset_postdata();
+		?>
+		<?php
+		$content = ob_get_clean();
+	}
+	return $content;
+}
+// Set filter function.
+add_filter( 'the_content', 'mop_student_archive_filter_the_content' );
+
 
