@@ -310,58 +310,273 @@ register_activation_hook( __FILE__, 'mop_rewrite_flush' );
 function mop_student_archive_filter_the_content( $content ) {
 	global $post;
 	$mop_students_page = get_option( 'mop-students-page', 0 );
-	if ( intval( $mop_students_page ) === $post->ID ) {
-		remove_filter( 'the_content', 'mop_student_archive_filter_the_content' );
-		ob_start();
-		?>
-		<?php the_content(); ?>
-		<?php
-		$args = array(
-			'post_type'      => 'student',
-			'cat'            => 3,
-			'posts_per_page' => 4,
-		);
+	if ( intval( $mop_students_page ) !== $post->ID ) {
+		return $content;
+	}
+	remove_filter( 'the_content', 'mop_student_archive_filter_the_content' );
+	ob_start();
+	?>
+	<?php the_content(); ?>
+	<?php
+	$args = array(
+		'post_type'      => 'student',
+		'cat'            => 3,
+		'posts_per_page' => 4,
+	);
 
-		$query = new WP_Query( $args );
-		if ( $query->have_posts() ) {
-			$paginate_links = paginate_links(
-				array(
-					'base'    => str_replace( PHP_INT_MAX, '%#%', esc_url( get_pagenum_link( PHP_INT_MAX ) ) ),
-					'format'  => '?paged=%#%',
-					'current' => max( 1, get_query_var( 'paged' ) ),
-					'total'   => $query->max_num_pages,
-				)
-			);
-			while ( $query->have_posts() ) {
-				$query->the_post();
-				?>
-				<div class="student-entry">
-					<?php if ( has_post_thumbnail() ) : ?>
-						<div class="student-featured-image"><?php the_post_thumbnail(); ?></div>
-					<?php endif; ?>
-					<h1><?php the_title(); ?></h1>
-					<p><?php the_excerpt(); ?></p>
-				</div>
-				<?php
-			}
-			if ( ! empty( $paginate_links ) ) {
-				?>
-				<p class="student-archive-pagination">Pages: <?php echo wp_kses_post( $paginate_links ); ?></p>
-				<?php
-			}
-		} else {
+	$query = new WP_Query( $args );
+	if ( $query->have_posts() ) {
+		$paginate_links = paginate_links(
+			array(
+				'base'    => str_replace( PHP_INT_MAX, '%#%', esc_url( get_pagenum_link( PHP_INT_MAX ) ) ),
+				'format'  => '?paged=%#%',
+				'current' => max( 1, get_query_var( 'paged' ) ),
+				'total'   => $query->max_num_pages,
+			)
+		);
+		while ( $query->have_posts() ) {
+			$query->the_post();
 			?>
-			<p>No students found.</p>
+			<div class="student-entry">
+				<?php if ( has_post_thumbnail() ) : ?>
+					<div class="student-featured-image"><?php the_post_thumbnail(); ?></div>
+				<?php endif; ?>
+				<h1><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h1>
+				<p><?php the_excerpt(); ?></p>
+			</div>
 			<?php
 		}
-		wp_reset_postdata();
+		if ( ! empty( $paginate_links ) ) {
+			?>
+			<p class="student-archive-pagination">Pages: <?php echo wp_kses_post( $paginate_links ); ?></p>
+			<?php
+		}
+	} else {
 		?>
+		<p>No students found.</p>
 		<?php
-		$content = ob_get_clean();
 	}
+	wp_reset_postdata();
+	?>
+	<?php
+	$content = ob_get_clean();
 	return $content;
 }
 // Set filter function.
 add_filter( 'the_content', 'mop_student_archive_filter_the_content' );
 
+/**
+ * Add admin custom fields for Quick Event
+ */
+function mop_student_add_custom_box() {
+	add_meta_box(
+		'mop_student_box_id', // Unique ID.
+		'Student fields', // Box title.
+		'mop_student_custom_box_html', // Content callback, must be of type callable.
+		'student' // Post type.
+	);
+}
+add_action( 'add_meta_boxes', 'mop_student_add_custom_box' );
+
+/**
+ * Admin custom fields content callback
+ *
+ * @param object $post post object.
+ */
+function mop_student_custom_box_html( $post ) {
+	$country = get_post_meta( $post->ID, 'mop_student_country', true );
+	?>
+<div class="inside">
+	<label for="mop_student_country_field">Country</label>
+	<input type="text" name="mop_student_country_field" id="mop_student_country_field" value="<?php echo esc_attr( $country ); ?>" />
+	<?php
+	$city = get_post_meta( $post->ID, 'mop_student_city', true );
+	?>
+</div>
+<div class="inside">
+	<label for="mop_student_city_field">City</label>
+	<input type="text" name="mop_student_city_field" id="mop_student_city_field" value="<?php echo esc_attr( $city ); ?>" />
+	<?php
+	$address = get_post_meta( $post->ID, 'mop_student_address', true );
+	?>
+</div>
+<div class="inside">
+	<label for="mop_student_address_field">Address</label>
+	<input type="text" name="mop_student_address_field" id="mop_student_address_field" value="<?php echo esc_attr( $address ); ?>" />
+	<?php
+	$birthdate = get_post_meta( $post->ID, 'mop_student_birthdate', true );
+	?>
+</div>
+<script type="text/javascript">
+jQuery(document).ready(function($) {
+	$('#mop_student_birthdate_field').datepicker({
+		dateFormat : 'yy-mm-dd'
+	});
+});
+</script>
+<div class="inside">
+	<label for="mop_student_birthdate_field">Birthdate</label>
+	<input type="text" name="mop_student_birthdate_field" id="mop_student_birthdate_field" value="<?php echo esc_attr( $birthdate ); ?>" />
+</div>
+	<?php
+	wp_nonce_field( 'mop_student_custom_box_action', 'mop_student_custom_box_field' );
+}
+
+/**
+ * Admin custom content save
+ *
+ * @param int $post_id post ID.
+ */
+function mop_student_save_postdata( $post_id ) {
+	if ( ! isset( $_POST['mop_student_custom_box_field'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['mop_student_custom_box_field'] ) ), 'mop_student_custom_box_action' ) ) {
+		return;
+	}
+	if ( ! current_user_can( 'edit_post', $post_id ) ) {
+		return;
+	}
+	if ( array_key_exists( 'mop_student_country_field', $_POST ) ) {
+		$country = sanitize_text_field( wp_unslash( $_POST['mop_student_country_field'] ) );
+		update_post_meta(
+			$post_id,
+			'mop_student_country',
+			$country
+		);
+	}
+	if ( array_key_exists( 'mop_student_city_field', $_POST ) ) {
+		$city = sanitize_text_field( wp_unslash( $_POST['mop_student_city_field'] ) );
+		update_post_meta(
+			$post_id,
+			'mop_student_city',
+			$city
+		);
+	}
+	if ( array_key_exists( 'mop_student_address_field', $_POST ) ) {
+		$address = sanitize_text_field( wp_unslash( $_POST['mop_student_address_field'] ) );
+		update_post_meta(
+			$post_id,
+			'mop_student_address',
+			$address
+		);
+	}
+	if ( array_key_exists( 'mop_student_birthdate_field', $_POST ) ) {
+		$birthdate = sanitize_text_field( wp_unslash( $_POST['mop_student_birthdate_field'] ) );
+		update_post_meta(
+			$post_id,
+			'mop_student_birthdate',
+			$birthdate
+		);
+	}
+}
+
+// Set action function to save_post.
+add_action( 'save_post', 'mop_student_save_postdata' );
+
+/**
+ * Include DatePicker js/css scripts to administration
+ */
+function mop_admin_custom_scripts() {
+	wp_enqueue_script( 'jquery-ui-datepicker' );
+	wp_register_style( 'jquery-ui', 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css', false, '1' );
+	wp_enqueue_style( 'jquery-ui' );
+	wp_enqueue_script( 'mop-script', plugin_dir_url( __FILE__ ) . 'scripts.js', array( 'jquery' ), '1.0', true );
+}
+
+// Set action function to admin_init.
+add_action( 'admin_enqueue_scripts', 'mop_admin_custom_scripts' );
+
+/**
+ * Content filter function for Student Archive Page
+ *
+ * @param string $content content value.
+ */
+function mop_student_filter_the_content( $content ) {
+	global $post;
+	if ( 'student' !== $post->post_type ) {
+		return $content;
+	}
+	remove_filter( 'the_content', 'mop_student_filter_the_content' );
+	ob_start();
+	$country   = get_post_meta( $post->ID, 'mop_student_country', true );
+	$city      = get_post_meta( $post->ID, 'mop_student_city', true );
+	$address   = get_post_meta( $post->ID, 'mop_student_address', true );
+	$birthdate = get_post_meta( $post->ID, 'mop_student_birthdate', true );
+	?>
+	<?php if ( ! empty( $country ) || ! empty( $city ) ) : ?>
+	<p>Lives in <?php echo esc_html( $country ) . ( empty( $country ) ? '' : ', ' ) . esc_html( $city ); ?></p>
+	<?php endif; ?>
+	<?php if ( ! empty( $address ) ) : ?>
+	<p>Address: <?php echo esc_html( $address ); ?></p>
+	<?php endif; ?>
+	<?php if ( ! empty( $birthdate ) ) : ?>
+	<p>Birthdate: <?php echo esc_html( gmdate( 'jS \o\f F Y', strtotime( $birthdate ) ) ); ?></p>
+	<?php endif; ?>
+	<?php the_content(); ?>
+	<?php
+	$content = ob_get_clean();
+	return $content;
+}
+// Set filter function.
+add_filter( 'the_content', 'mop_student_filter_the_content' );
+
+
+/**
+ * Admin custom student list column
+ *
+ * @param array $columns columns array.
+ */
+function mop_manage_student_posts_columns( $columns ) {
+	$columns['mop_student_active'] = 'Active';
+	return $columns;
+}
+
+// Set filter function for manage_student_posts_columns.
+add_filter( 'manage_student_posts_columns', 'mop_manage_student_posts_columns' );
+
+/**
+ * Admin custom student list column
+ *
+ * @param string $column column key.
+ * @param int    $post_id post ID.
+ */
+function mop_custom_student_column( $column, $post_id ) {
+	if ( 'mop_student_active' !== $column ) {
+		return;
+	}
+	$active = get_post_meta( $post_id, 'mop_student_active', true );
+	?>
+	<input type="checkbox" name="mop_student_active_checkbox" data-post-id="<?php echo esc_attr( $post_id ); ?>"  data-nonce="<?php echo esc_attr( wp_create_nonce( 'mop-students-active-checkbox' ) ); ?>" value="1" <?php checked( $active, '1' ); ?> />
+	<?php
+}
+
+// Set filter function for manage_student_posts_columns.
+add_action( 'manage_student_posts_custom_column', 'mop_custom_student_column', 10, 2 );
+
+/**
+ * Ajax action function for Student Active Checkbox
+ */
+function mop_student_active_action() {
+	$nonce_check = check_ajax_referer( 'mop-students-active-checkbox', 'nonce', false );
+	if ( ! $nonce_check ) {
+		wp_die( 'Invalid nonce.' );
+	}
+	ob_clean();
+	if ( isset( $_POST['mop-post-id'] ) && isset( $_POST['mop-student-active'] ) ) {
+		$post_id = sanitize_text_field( wp_unslash( $_POST['mop-post-id'] ) );
+		$active  = sanitize_text_field( wp_unslash( $_POST['mop-student-active'] ) );
+		update_post_meta(
+			$post_id,
+			'mop_student_active',
+			$active
+		);
+		if ( '1' === $active ) {
+			wp_die( 'Student active.' );
+		} else {
+			wp_die( 'Student not active.' );
+		}
+	}
+	wp_die();
+}
+
+// Set ajax action function.
+add_action( 'wp_ajax_mop_student_active_action', 'mop_student_active_action' );
 
