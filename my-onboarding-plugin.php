@@ -389,24 +389,24 @@ function mop_student_custom_box_html( $post ) {
 <div class="inside">
 	<label for="mop_student_country_field">Country</label>
 	<input type="text" name="mop_student_country_field" id="mop_student_country_field" value="<?php echo esc_attr( $country ); ?>" />
+</div>
 	<?php
 	$city = get_post_meta( $post->ID, 'mop_student_city', true );
 	?>
-</div>
 <div class="inside">
 	<label for="mop_student_city_field">City</label>
 	<input type="text" name="mop_student_city_field" id="mop_student_city_field" value="<?php echo esc_attr( $city ); ?>" />
+</div>
 	<?php
 	$address = get_post_meta( $post->ID, 'mop_student_address', true );
 	?>
-</div>
 <div class="inside">
 	<label for="mop_student_address_field">Address</label>
 	<input type="text" name="mop_student_address_field" id="mop_student_address_field" value="<?php echo esc_attr( $address ); ?>" />
+</div>
 	<?php
 	$birthdate = get_post_meta( $post->ID, 'mop_student_birthdate', true );
 	?>
-</div>
 <script type="text/javascript">
 jQuery(document).ready(function($) {
 	$('#mop_student_birthdate_field').datepicker({
@@ -417,6 +417,13 @@ jQuery(document).ready(function($) {
 <div class="inside">
 	<label for="mop_student_birthdate_field">Birthdate</label>
 	<input type="text" name="mop_student_birthdate_field" id="mop_student_birthdate_field" value="<?php echo esc_attr( $birthdate ); ?>" />
+</div>
+	<?php
+	$grade = get_post_meta( $post->ID, 'mop_student_grade', true );
+	?>
+<div class="inside">
+	<label for="mop_student_grade_field">Class / Grade</label>
+	<input type="text" name="mop_student_grade_field" id="mop_student_grade_field" value="<?php echo esc_attr( $grade ); ?>" />
 </div>
 	<?php
 	wp_nonce_field( 'mop_student_custom_box_action', 'mop_student_custom_box_field' );
@@ -466,6 +473,14 @@ function mop_student_save_postdata( $post_id ) {
 			$birthdate
 		);
 	}
+	if ( array_key_exists( 'mop_student_grade_field', $_POST ) ) {
+		$grade = sanitize_text_field( wp_unslash( $_POST['mop_student_grade_field'] ) );
+		update_post_meta(
+			$post_id,
+			'mop_student_grade',
+			$grade
+		);
+	}
 }
 
 // Set action function to save_post.
@@ -500,6 +515,7 @@ function mop_student_filter_the_content( $content ) {
 	$city      = get_post_meta( $post->ID, 'mop_student_city', true );
 	$address   = get_post_meta( $post->ID, 'mop_student_address', true );
 	$birthdate = get_post_meta( $post->ID, 'mop_student_birthdate', true );
+	$grade     = get_post_meta( $post->ID, 'mop_student_grade', true );
 	?>
 	<?php if ( ! empty( $country ) || ! empty( $city ) ) : ?>
 	<p>Lives in <?php echo esc_html( $country ) . ( empty( $country ) ? '' : ', ' ) . esc_html( $city ); ?></p>
@@ -509,6 +525,9 @@ function mop_student_filter_the_content( $content ) {
 	<?php endif; ?>
 	<?php if ( ! empty( $birthdate ) ) : ?>
 	<p>Birthdate: <?php echo esc_html( gmdate( 'jS \o\f F Y', strtotime( $birthdate ) ) ); ?></p>
+	<?php endif; ?>
+	<?php if ( ! empty( $grade ) ) : ?>
+	<p>Class / Grade: <?php echo esc_html( $grade ); ?></p>
 	<?php endif; ?>
 	<?php the_content(); ?>
 	<?php
