@@ -5,6 +5,11 @@
  * @package my-onboarding-plugin
  */
 
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Students List Widget
  */

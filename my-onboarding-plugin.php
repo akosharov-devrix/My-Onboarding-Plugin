@@ -14,6 +14,15 @@
  * @package my-onboarding-plugin
  */
 
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+define( 'MOP__PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+
+require_once MOP__PLUGIN_DIR . 'widgets/class-mop-student-widget.php';
+
 $mop_filters_enabled = get_option( 'mop-filters-enabled', '0' );
 
 /**
