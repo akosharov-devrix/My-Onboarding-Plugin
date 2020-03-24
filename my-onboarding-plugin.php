@@ -661,3 +661,49 @@ function mop_student_query( $atts ) {
 // Set shortcode function.
 add_shortcode( 'student', 'mop_student_query' );
 
+/**
+ * Register sidebar
+ */
+function mop_register_sidebars() {
+	register_sidebar(
+		array(
+			'id'            => 'mop_sidebar',
+			'name'          => __( 'Student Sidebar' ),
+			'description'   => __( 'A short description of the sidebar.' ),
+			'before_widget' => '<div id="%1$s" class="widget %2$s">',
+			'after_widget'  => '</div>',
+			'before_title'  => '<h3 class="widget-title">',
+			'after_title'   => '</h3>',
+		)
+	);
+}
+
+// Set widgets_init action function.
+add_action( 'widgets_init', 'mop_register_sidebars' );
+
+/**
+ * Content filter function for Student Archive Page
+ *
+ * @param string $content content value.
+ */
+function mop_student_sidebar_the_content( $content ) {
+	global $post;
+	if ( 'student' !== $post->post_type ) {
+		return $content;
+	}
+	remove_filter( 'the_content', 'mop_student_sidebar_the_content' );
+	ob_start();
+	?>
+	<?php the_content(); ?>
+	<?php if ( is_active_sidebar( 'mop_sidebar' ) ) : ?>
+		<?php dynamic_sidebar( 'mop_sidebar' ); ?>
+	<?php else : ?>
+		<!-- Time to add some widgets! -->
+	<?php endif; ?>
+	<?php
+	$content = ob_get_clean();
+	return $content;
+}
+
+// Set filter function.
+add_filter( 'the_content', 'mop_student_sidebar_the_content' );
