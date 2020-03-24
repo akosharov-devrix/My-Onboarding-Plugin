@@ -704,5 +704,6 @@ function mop_student_sidebar_the_content( $content ) {
 	$content = ob_get_clean();
 	return $content;
 }
+
 // Set filter function.
 add_filter( 'the_content', 'mop_student_sidebar_the_content' );
