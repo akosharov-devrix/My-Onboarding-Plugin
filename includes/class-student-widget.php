@@ -2,8 +2,10 @@
 /**
  * Students List Widget
  *
- * @package my-onboarding-plugin
+ * @package DX/MOP
  */
+
+namespace DX\MOP;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -13,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Students List Widget
  */
-class Mop_Student_Widget extends WP_Widget {
+class Student_Widget extends \WP_Widget {
 	/**
 	 * Register widget with WordPress.
 	 */
@@ -52,7 +54,7 @@ class Mop_Student_Widget extends WP_Widget {
 		$transient = 'mop_student_widget_' . $instance['post_per_page'] . '_' . $instance['student_status'] . '_' . get_query_var( 'paged' );
 		$query     = get_transient( $transient );
 		if ( false === $query ) {
-			$query = new WP_Query( $query_args );
+			$query = new \WP_Query( $query_args );
 			set_transient( $transient, $query, MINUTE_IN_SECONDS );
 		}
 
@@ -154,14 +156,4 @@ class Mop_Student_Widget extends WP_Widget {
 
 		return $instance;
 	}
-}
-
-// Register Mop_Student_Widget widget.
-add_action( 'widgets_init', 'mop_register_student_widget' );
-
-/**
- * Register Mop_Student_Widget widget
- */
-function mop_register_student_widget() {
-	register_widget( 'Mop_Student_Widget' );
 }
